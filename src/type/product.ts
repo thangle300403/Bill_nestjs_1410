@@ -1,6 +1,6 @@
 export class CategoryProduct {
   categoryName: string;
-  items: any[]; // or define a proper Product DTO later
+  items: any[];
   totalItem: number;
   pagination: {
     page: string;

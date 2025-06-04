@@ -12,8 +12,11 @@ export class ProductController {
     @Query('latest') latest: number,
     @Query('hierarchy') hierarchy: string,
     @Query('item_per_page') itemPerPage: number = 10,
+    @Query('category_id') categoryId?: number,
+    @Query('price-range') priceRange?: string,
+    @Query('sort') sort?: string,
+    @Query('search') search?: string,
   ) {
-    console.log('hierarchy:', hierarchy, typeof hierarchy);
     if (Number(hierarchy) === 1) {
       return this.productService.getProductsByCategory(itemPerPage);
     } else {
@@ -22,6 +25,10 @@ export class ProductController {
         featured,
         latest,
         itemPerPage,
+        categoryId,
+        priceRange,
+        sort,
+        search,
       );
     }
   }

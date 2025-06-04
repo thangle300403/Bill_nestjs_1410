@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, FindOptionsOrder, Like, MoreThan, Repository } from 'typeorm';
 import { Product } from '../entities/product.entity';
 import { Category } from '../entities/category.entity';
 import { FindOptionsWhere } from 'typeorm';
@@ -20,15 +20,58 @@ export class ProductService {
     featured: number,
     latest: number,
     itemPerPage: number,
+    categoryId?: number,
+    priceRange?: string,
+    sort?: string,
+    search?: string,
   ) {
     const skip = (page - 1) * itemPerPage;
 
     const where: FindOptionsWhere<Product> = {};
+    const order: FindOptionsOrder<Product> = {};
+
     if (featured === 1) where.featured = 1;
+    if (categoryId) where.categoryId = categoryId;
+
+    // 🛒 Price range: "start-end" or "start-greater"
+    if (priceRange) {
+      const [start, end] = priceRange.split('-');
+      if (end === 'greater') {
+        where.price = MoreThan(Number(start));
+      } else if (!isNaN(Number(start)) && !isNaN(Number(end))) {
+        where.price = Between(Number(start), Number(end));
+      }
+    }
+
+    // 🔍 Search by name
+    if (search) {
+      where.name = Like(`%${search}%`);
+    }
+
+    // 📌 Sorting
+    if (latest === 1) {
+      order.createdDate = 'DESC';
+    } else if (sort) {
+      const [field, direction] = sort.split('-');
+      const validFields: { [key: string]: keyof Product } = {
+        price: 'price',
+        alpha: 'name',
+        created: 'createdDate',
+      };
+
+      const mappedField = validFields[field as keyof typeof validFields];
+
+      if (mappedField) {
+        order[mappedField] =
+          direction?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+      }
+    } else {
+      order.id = 'DESC';
+    }
 
     const [items, totalItem] = await this.productRepository.findAndCount({
       where,
-      order: latest === 1 ? { createdDate: 'DESC' } : { id: 'DESC' },
+      order,
       skip,
       take: itemPerPage,
     });

@@ -3,31 +3,33 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ProductController } from './controllers/product.controller';
-import { ProductService } from './services/product.service';
-import { Product } from './entities/product.entity';
-import { Category } from './entities/category.entity';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { ProductModule } from './modules/product.module';
 import { join } from 'path';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { ProductModule } from './modules/product.module';
 
 @Module({
   imports: [
+    // Load .env variables globally
     ConfigModule.forRoot({
       envFilePath: '.env.local',
       isGlobal: true,
     }),
+
+    // Serve static files from /public/images at /images
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'),
+      rootPath: join(__dirname, '..', 'public', 'images'),
       serveRoot: '/images',
     }),
+
+    // Setup TypeORM (MySQL) configuration
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'mysql',
         host: configService.get<string>('DB_HOST'),
-        port: 3306, // default MySQL port
+        port: 3306,
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
@@ -35,14 +37,29 @@ import { join } from 'path';
         synchronize: true,
       }),
     }),
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'),
-      serveRoot: '/images',
+
+    // Mailer Module setup
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        transport: {
+          host: configService.get<string>('SMTP_HOST'),
+          auth: {
+            user: configService.get<string>('SMTP_USERNAME'),
+            pass: configService.get<string>('SMTP_SECRET'),
+          },
+        },
+        defaults: {
+          from: `"No Reply" <${configService.get<string>('SMTP_USERNAME')}>`,
+        },
+      }),
     }),
+
+    // Feature Modules
     ProductModule,
-    TypeOrmModule.forFeature([Product, Category]),
   ],
-  controllers: [AppController, ProductController],
-  providers: [AppService, ProductService],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
