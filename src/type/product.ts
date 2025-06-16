@@ -7,3 +7,11 @@ export class CategoryProduct {
     totalPage: number;
   };
 }
+
+export class ProductResponse {
+  id: number;
+  name: string;
+  featured_image: string;
+  price: number;
+  sale_price: number;
+}

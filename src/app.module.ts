@@ -7,6 +7,13 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ProductModule } from './modules/product.module';
+import { CategoryModule } from './modules/category.module';
+import { ContactModule } from './modules/contact.module';
+import { AuthModule } from './modules/auth.module';
+import { OrdersModule } from './modules/order.module';
+import { TransportModule } from './modules/transport.module';
+import { AddressModule } from './modules/address.module';
+import { CustomerModule } from './modules/customer.module';
 
 @Module({
   imports: [
@@ -34,7 +41,7 @@ import { ProductModule } from './modules/product.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize: false,
       }),
     }),
 
@@ -51,13 +58,20 @@ import { ProductModule } from './modules/product.module';
           },
         },
         defaults: {
-          from: `"No Reply" <${configService.get<string>('SMTP_USERNAME')}>`,
+          from: `"No Reply" <${configService.get<string>('FRONTEND_URL')}>`,
         },
       }),
     }),
 
     // Feature Modules
     ProductModule,
+    CategoryModule,
+    ContactModule,
+    AuthModule,
+    OrdersModule,
+    TransportModule,
+    AddressModule,
+    CustomerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

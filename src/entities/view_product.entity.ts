@@ -10,8 +10,8 @@ import { Category } from './category.entity';
 import { Brand } from './brand.entity';
 import { OrderItem } from './order_item.entity';
 
-@Entity('product')
-export class Product {
+@Entity('view_product')
+export class ViewProduct {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -59,6 +59,9 @@ export class Product {
 
   @Column({ type: 'tinyint', width: 1, default: 0 })
   featured: number;
+
+  @Column({ type: 'tinyint', width: 1, default: 0 })
+  sale_price: number;
 
   @ManyToOne(() => Category, (category) => category.products)
   @JoinColumn({ name: 'category_id' })

@@ -1,9 +1,23 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Param,
+  Res,
+  HttpStatus,
+  Post,
+  Body,
+} from '@nestjs/common';
+import { Response } from 'express';
 import { ProductService } from '../services/product.service';
+import { CommentService } from '../services/comment.service';
 
 @Controller('api/v1/products')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(
+    private readonly productService: ProductService,
+    private readonly commentService: CommentService,
+  ) {}
 
   @Get()
   async index(
@@ -31,5 +45,38 @@ export class ProductController {
         search,
       );
     }
+  }
+
+  @Get(':slug')
+  async getProductDetail(@Param('slug') slug: string, @Res() res: Response) {
+    try {
+      const productDetail = await this.productService.getSingleProduct(slug);
+      return res.status(HttpStatus.OK).json(productDetail);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Product not found';
+      return res
+        .status(HttpStatus.NOT_FOUND)
+        .json({ message, statusCode: 404 });
+    }
+  }
+
+  @Get(':id/comments')
+  async getComments(@Param('id') id: number) {
+    return this.commentService.getCommentsByProduct(id);
+  }
+
+  @Post(':id/comments')
+  async createComment(
+    @Param('id') id: number,
+    @Body()
+    commentData: {
+      email: string;
+      fullname: string;
+      rating: number;
+      description: string;
+    },
+  ) {
+    return this.commentService.createComment(id, commentData);
   }
 }
