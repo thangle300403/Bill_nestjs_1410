@@ -17,6 +17,7 @@ import { OrderService } from 'src/services/order.service';
 import { CartItem } from 'src/type/formattedOrderItem';
 import { DeliveryInfo } from 'src/type/address';
 import { LoggedUser } from 'src/type/customer';
+import { OrderStatus } from 'src/type/status';
 
 @Controller('api/v1')
 export class OrdersController {
@@ -26,9 +27,8 @@ export class OrdersController {
   ) {}
 
   @Get('orders')
-  async getOrders(@Req() req: Request) {
-    const authHeader = req.headers.authorization;
-    const token = authHeader ? authHeader.split(' ')[1] : null;
+  async getOrders(@Req() req: Request & { cookies: Record<string, string> }) {
+    const token = (req.cookies?.access_token ?? null) as string | null;
 
     if (!token) {
       throw new UnauthorizedException('Access token missing');
@@ -36,7 +36,6 @@ export class OrdersController {
 
     const jwtKey = this.configService.get<string>('JWT_KEY') || '';
     const decoded = jwt.verify(token, jwtKey) as { email: string };
-
     return await this.orderService.getFormattedOrders(decoded.email);
   }
 
@@ -47,9 +46,11 @@ export class OrdersController {
     @Res() res: Response,
   ) {
     try {
-      const authHeader = req.headers.authorization;
-      const token = authHeader ? authHeader.split(' ')[1] : null;
-      if (!token) throw new UnauthorizedException('Access token missing');
+      const token = (req.cookies?.access_token ?? null) as string | null;
+
+      if (!token) {
+        throw new UnauthorizedException('Access token missing');
+      }
 
       const jwtKey = this.configService.get<string>('JWT_KEY') || '';
       const decoded = jwt.verify(token, jwtKey) as { email: string };
@@ -68,11 +69,11 @@ export class OrdersController {
 
   @Patch('orders/:id/cancel')
   async cancelOrder(@Req() req: Request, @Param('id') id: string) {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = (req.cookies?.access_token ?? null) as string | null;
+
     if (!token) {
       throw new UnauthorizedException('Access token missing');
     }
-
     const jwtKey = this.configService.get<string>('JWT_KEY') || '';
     const decoded = jwt.verify(token, jwtKey) as { email: string };
 
@@ -91,5 +92,10 @@ export class OrdersController {
     @Body('loggedUser') loggedUser: LoggedUser,
   ) {
     return this.orderService.checkout(cartItems, deliveryInfo, loggedUser);
+  }
+
+  @Get('status')
+  async getAllStatuses(): Promise<OrderStatus[]> {
+    return this.orderService.getAllStatuses();
   }
 }

@@ -10,6 +10,7 @@ import { Ward } from 'src/entities/ward.entity';
 import {
   CustomerUpdateFields,
   EnrichedCustomer,
+  OAuthUser,
   UpdateInfoDto,
   UpdateShippingDto,
 } from 'src/type/customer';
@@ -32,6 +33,17 @@ export class CustomerService {
 
     private readonly mailerService: MailerService,
   ) {}
+
+  async create(data: Partial<Customer>): Promise<Customer> {
+    const newCustomer: Customer = this.customerRepository.create(data);
+    return await this.customerRepository.save(newCustomer);
+  }
+
+  async findByEmail(email: string): Promise<Customer | null> {
+    return await this.customerRepository.findOne({
+      where: { email },
+    });
+  }
 
   async updateShippingDefault(
     customerId: number,
@@ -283,5 +295,16 @@ export class CustomerService {
       success: true,
       message: 'Đã tạo mới mật khẩu thành công.',
     };
+  }
+
+  async createFromOAuth(user: OAuthUser): Promise<Customer> {
+    const newCustomer = this.customerRepository.create({
+      email: user.email,
+      name: user.name,
+      login_by: user.provider,
+      is_active: 1,
+    });
+
+    return await this.customerRepository.save(newCustomer);
   }
 }

@@ -49,18 +49,17 @@ export class CustomerController {
   @Patch('customers/:id/account')
   async updateAccount(
     @Param('id') id: string,
-    @Req() req: Request,
+    @Req() req: Request & { cookies: Record<string, string> },
     @Body() dto: UpdateInfoDto,
   ) {
-    const authHeader = req.headers['authorization'] as string | undefined;
-    const token = authHeader ? authHeader.split(' ')[1] : null;
+    const token = req.cookies?.access_token ?? null;
 
     if (!token) {
       throw new UnauthorizedException('Access token missing');
     }
 
     const jwtKey = this.configService.get<string>('JWT_KEY') || '';
-    jwt.verify(token, jwtKey); // ✅ just verify validity – don't need email
+    jwt.verify(token, jwtKey);
 
     const updated = await this.customerService.updateInfoById(Number(id), dto);
     return updated;

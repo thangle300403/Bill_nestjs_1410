@@ -27,6 +27,7 @@ import { Transport } from 'src/entities/transport.entity';
 import { DeliveryInfo } from 'src/type/address';
 import { MailerService } from '@nestjs-modules/mailer';
 import { LoggedUser } from 'src/type/customer';
+import { OrderStatus } from 'src/type/status';
 
 @Injectable()
 export class OrderService {
@@ -59,6 +60,9 @@ export class OrderService {
 
     private readonly mailerService: MailerService,
   ) {}
+  async getAllStatuses(): Promise<OrderStatus[]> {
+    return await this.statusRepository.find();
+  }
 
   async getFormattedOrders(email: string): Promise<FormattedOrder[]> {
     const baseUrl = this.configService.get<string>('IMAGE_BASE_URL');

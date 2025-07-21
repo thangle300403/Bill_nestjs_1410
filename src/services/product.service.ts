@@ -33,6 +33,7 @@ export class ProductService {
     priceRange?: string,
     sort?: string,
     search?: string,
+    discount?: number,
   ) {
     const skip = (page - 1) * itemPerPage;
 
@@ -41,6 +42,9 @@ export class ProductService {
 
     if (featured === 1) where.featured = 1;
     if (categoryId) where.categoryId = categoryId;
+    if (discount === 1) {
+      where.discountPercentage = MoreThan(0);
+    }
 
     // 🛒 Price range: "start-end" or "start-greater"
     if (priceRange) {
@@ -102,10 +106,12 @@ export class ProductService {
       description: (item.description || '').replace(/<\/?[^>]+(>|$)/g, ''),
       star: item.star,
       featured: item.featured,
-      sale_price: item.price.toString(),
-      VIEW_NAME: 'view_product',
-      TABLE_NAME: 'product',
-      SELECT_ALL_QUERY: 'SELECT * FROM view_product',
+      sale_price:
+        item.discountPercentage && item.discountPercentage > 0
+          ? Math.floor(
+              item.price * (1 - item.discountPercentage / 100),
+            ).toString()
+          : item.price.toString(),
     }));
 
     const totalPage = Math.ceil(totalItem / itemPerPage);
@@ -148,9 +154,12 @@ export class ProductService {
         description: (item.description || '').replace(/<\/?[^>]+(>|$)/g, ''),
         star: item.star,
         featured: item.featured,
-        sale_price: item.price.toString(),
-        VIEW_NAME: 'view_product',
-        TABLE_NAME: 'product',
+        sale_price:
+          item.discountPercentage && item.discountPercentage > 0
+            ? Math.floor(
+                item.price * (1 - item.discountPercentage / 100),
+              ).toString()
+            : item.price.toString(),
       }));
 
       const totalPage = Math.ceil(totalItem / itemPerPage);
@@ -204,9 +213,10 @@ export class ProductService {
       description: product.description || '',
       star: product.star,
       featured: product.featured,
-      sale_price: product.price.toString(),
-      VIEW_NAME: 'view_product',
-      TABLE_NAME: 'product',
+      sale_price: (
+        product.price -
+        (product.price * product.discountPercentage) / 100
+      ).toFixed(2),
     };
 
     const relatedProducts = await this.productRepository.find({
@@ -235,10 +245,10 @@ export class ProductService {
         description: related.description || '',
         star: related.star,
         featured: related.featured,
-        sale_price: related.price.toString(),
-        VIEW_NAME: 'view_product',
-        TABLE_NAME: 'product',
-        SELECT_ALL_QUERY: 'SELECT * FROM view_product',
+        sale_price: (
+          related.price -
+          (related.price * related.discountPercentage) / 100
+        ).toFixed(2),
       }));
 
     return {

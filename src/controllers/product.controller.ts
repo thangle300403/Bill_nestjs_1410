@@ -21,28 +21,31 @@ export class ProductController {
 
   @Get()
   async index(
-    @Query('page') page: number = 1,
-    @Query('featured') featured: number,
-    @Query('latest') latest: number,
+    @Query('page') page: string = '1',
+    @Query('featured') featured: string,
+    @Query('latest') latest: string,
     @Query('hierarchy') hierarchy: string,
-    @Query('item_per_page') itemPerPage: number = 10,
-    @Query('category_id') categoryId?: number,
-    @Query('price-range') priceRange?: string,
+    @Query('item_per_page') itemPerPage: string = '10',
+    @Query('category_id') categoryId?: string,
+    @Query('priceRange') priceRange?: string,
     @Query('sort') sort?: string,
     @Query('search') search?: string,
+    @Query('discount') discount = '0',
   ) {
+    const parsedDiscount = Number(discount);
     if (Number(hierarchy) === 1) {
-      return this.productService.getProductsByCategory(itemPerPage);
+      return this.productService.getProductsByCategory(Number(itemPerPage));
     } else {
       return this.productService.getProducts(
-        page,
-        featured,
-        latest,
-        itemPerPage,
-        categoryId,
+        Number(page),
+        Number(featured),
+        Number(latest),
+        Number(itemPerPage),
+        Number(categoryId),
         priceRange,
         sort,
         search,
+        parsedDiscount,
       );
     }
   }

@@ -10,5 +10,6 @@ import { District } from 'src/entities/district.entity';
   imports: [TypeOrmModule.forFeature([Customer, Ward, District])],
   controllers: [CustomerController],
   providers: [CustomerService],
+  exports: [CustomerService],
 })
 export class CustomerModule {}

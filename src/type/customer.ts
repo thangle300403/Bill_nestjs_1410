@@ -30,3 +30,12 @@ export interface LoggedUser {
   id: number;
   email: string;
 }
+
+export type OAuthUser = {
+  id: number;
+  name: string;
+  email: string;
+  provider: string;
+  email_verified: boolean;
+  isConfirmed: boolean;
+};

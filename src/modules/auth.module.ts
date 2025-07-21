@@ -9,7 +9,14 @@ import { Transport } from 'src/entities/transport.entity';
 import { Order } from 'src/entities/order.entity';
 import { Brand } from 'src/entities/brand.entity';
 import { Status } from 'src/entities/status.entity';
-import { AuthController } from 'src/controllers/auth.controller';
+import { AuthController } from 'src/controllers/auth/auth.controller';
+import { PassportModule } from '@nestjs/passport';
+import { GoogleStrategy } from 'src/auth/google.strategy';
+import { ConfigModule } from '@nestjs/config';
+import { JwtConfig } from 'src/config/jwt.config';
+import { OAuthController } from 'src/controllers/auth/oAuth.controller';
+import { DiscordStrategy } from 'src/auth/discord.strategy';
+import { CustomerModule } from './customer.module';
 
 @Module({
   imports: [
@@ -23,8 +30,12 @@ import { AuthController } from 'src/controllers/auth.controller';
       Brand,
       Status,
     ]),
+    ConfigModule.forRoot(),
+    PassportModule,
+    JwtConfig,
+    CustomerModule,
   ],
-  controllers: [AuthController],
-  providers: [AuthService],
+  controllers: [AuthController, OAuthController],
+  providers: [AuthService, GoogleStrategy, DiscordStrategy],
 })
 export class AuthModule {}

@@ -27,6 +27,14 @@ import { CustomerModule } from './modules/customer.module';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public', 'images'),
       serveRoot: '/images',
+      serveStaticOptions: {
+        setHeaders: (res) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+          res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        },
+      },
     }),
 
     // Setup TypeORM (MySQL) configuration

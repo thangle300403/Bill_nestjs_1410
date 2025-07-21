@@ -14,6 +14,10 @@ import * as jwt from 'jsonwebtoken';
 import { Customer } from '../entities/customer.entity';
 import { ConfigService } from '@nestjs/config';
 import { MailerService } from '@nestjs-modules/mailer';
+import { Response } from 'express';
+import { JwtService } from '@nestjs/jwt';
+import { OAuthUser } from 'src/type/customer';
+import { CustomerService } from './customer.service';
 
 @Injectable()
 export class AuthService {
@@ -22,9 +26,11 @@ export class AuthService {
     private readonly customerRepository: Repository<Customer>,
     private readonly configService: ConfigService,
     private readonly mailerService: MailerService,
+    private readonly customerService: CustomerService,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, res: Response) {
     const customer = await this.customerRepository.findOne({
       where: { email },
       relations: ['ward', 'ward.district', 'ward.district.province'],
@@ -54,6 +60,14 @@ export class AuthService {
       { expiresIn: '30d' },
     );
 
+    // ✅ Set token in cookie
+    res.cookie('access_token', token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+
     // Flatten district and province IDs
     const districtId = customer.ward?.district?.id || null;
     const provinceId = customer.ward?.district?.province?.id || null;
@@ -64,7 +78,6 @@ export class AuthService {
 
     // Add district_id and province_id
     const responsePayload = {
-      access_token: token,
       user: {
         ...userWithoutPassword,
         district_id: districtId,
@@ -118,9 +131,7 @@ export class AuthService {
       // 4. Send activation email
       const jwtSecret = this.configService.get<string>('JWT_KEY') || '';
       const token = jwt.sign({ email }, jwtSecret, { expiresIn: '3d' });
-      const web =
-        this.configService.get<string>('FRONTEND_URL') ||
-        'http://localhost:3000';
+      const web = process.env.FRONTEND_URL;
       const link = `${web}/active_account?token=${token}`;
 
       const subject = 'Godashop - Verify your email.';
@@ -264,7 +275,7 @@ export class AuthService {
           id: customer.id,
           email: customer.email,
           name: customer.name,
-          access_token: token, // or generate a fresh token if needed
+          access_token: token,
         },
       };
       return response;
@@ -281,5 +292,55 @@ export class AuthService {
       where: { email },
     });
     return !!customer;
+  }
+
+  async getProfile(id: number) {
+    const user = await this.customerRepository.findOne({
+      where: { id },
+      relations: ['ward', 'ward.district', 'ward.district.province'],
+    });
+
+    return user;
+  }
+
+  async handleOAuthLogin(user: OAuthUser, res: Response): Promise<void> {
+    if (user.provider === 'google' && !user.email_verified) {
+      throw new UnauthorizedException('Google email not verified');
+    }
+
+    const existingUser: Customer | null =
+      await this.customerService.findByEmail(user.email);
+
+    if (!existingUser) {
+      const confirmUrl = `http://localhost:3000/oauth/confirm?email=${encodeURIComponent(
+        user.email,
+      )}&name=${encodeURIComponent(user.name)}`;
+
+      // ❗ return ngay, không thực hiện bất kỳ logic nào phía sau
+      return res.redirect(confirmUrl);
+    }
+
+    // ✅ Chỉ tạo token khi chắc chắn user tồn tại và có ID hợp lệ
+    if (!existingUser.id) {
+      console.warn('[OAuth]', 'Invalid user record, missing ID.');
+      throw new UnauthorizedException('Invalid user record.');
+    }
+
+    const payload = {
+      id: existingUser.id,
+      email: existingUser.email,
+      name: existingUser.name,
+    };
+
+    const token = await this.jwtService.signAsync(payload);
+
+    res.cookie('access_token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+
+    return res.redirect('http://localhost:3000/');
   }
 }
