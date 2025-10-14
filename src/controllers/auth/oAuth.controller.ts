@@ -15,6 +15,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { OAuthUser } from 'src/type/customer';
 import { AuthService } from 'src/services/auth.service';
 import { CustomerService } from 'src/services/customer.service';
+import setAuthCookies from 'src/auth/setAuthCookies';
+import { ConfigService } from '@nestjs/config';
 
 // Extend Express Request interface to include 'user'
 declare module 'express' {
@@ -29,6 +31,7 @@ export class OAuthController {
     private jwtService: JwtService,
     private readonly authService: AuthService,
     private readonly customerService: CustomerService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Get('google')
@@ -52,18 +55,7 @@ export class OAuthController {
 
     const newUser = await this.customerService.createFromOAuth(body);
 
-    const token = await this.jwtService.signAsync({
-      id: newUser.id,
-      email: newUser.email,
-      name: newUser.name,
-    });
-
-    res.cookie('access_token', token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
+    setAuthCookies(newUser, res, this.configService);
 
     return res.json({ user: newUser });
   }

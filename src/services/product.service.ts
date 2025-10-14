@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   Between,
   FindOptionsOrder,
+  In,
   Like,
   MoreThan,
   Not,
@@ -13,6 +14,12 @@ import { Category } from '../entities/category.entity';
 import { FindOptionsWhere } from 'typeorm';
 import { CategoryProduct } from 'src/type/product';
 import { ConfigService } from '@nestjs/config';
+import { formatProduct, formatProducts } from 'src/utils/format-product.util';
+import { ProductEmbedding } from 'src/entities/product-embedding.entity';
+import OpenAI from 'openai';
+import { cosineSimilarity } from 'src/utils/embeddingText.util';
+import { OrderItem } from 'src/entities/order_item.entity';
+import { truncateToMaxTokens } from 'src/utils/tokenize';
 
 @Injectable()
 export class ProductService {
@@ -22,7 +29,44 @@ export class ProductService {
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
     private readonly configService: ConfigService,
+    @InjectRepository(ProductEmbedding)
+    private readonly embeddingRepository: Repository<ProductEmbedding>,
+    @InjectRepository(OrderItem)
+    private readonly orderItemRepository: Repository<OrderItem>,
   ) {}
+
+  private getOpenAIClient() {
+    return new OpenAI({
+      apiKey: this.configService.get<string>('OPENAI_API_KEY'),
+    });
+  }
+
+  private averageEmbeddings(vectors: number[][]): number[] {
+    const length = vectors[0].length;
+    const result = new Array(length).fill(0);
+
+    for (const vec of vectors) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      vec.forEach((val, i) => (result[i] += val));
+    }
+
+    return result.map((val) => val / vectors.length);
+  }
+
+  private async getEmbeddingVectorsFromIds(ids: number[]) {
+    const embeddings = await this.embeddingRepository.find({
+      where: { product: In(ids) },
+      relations: ['product'],
+    });
+
+    return embeddings;
+  }
+
+  async findById(id: number): Promise<Product | null> {
+    return await this.productRepository.findOne({
+      where: { id },
+    });
+  }
 
   async getProducts(
     page: number,
@@ -89,30 +133,7 @@ export class ProductService {
       take: itemPerPage,
     });
 
-    const formattedItems = items.map((item) => ({
-      id: item.id,
-      barcode: item.barcode,
-      sku: item.sku,
-      name: item.name,
-      price: item.price,
-      discount_percentage: item.discountPercentage,
-      discount_from_date: item.discountFromDate,
-      discount_to_date: item.discountToDate,
-      featured_image: `${process.env.IMAGE_BASE_URL}${item.featuredImage}`,
-      inventory_qty: item.inventoryQty,
-      category_id: item.categoryId,
-      brand_id: item.brandId,
-      created_date: item.createdDate,
-      description: (item.description || '').replace(/<\/?[^>]+(>|$)/g, ''),
-      star: item.star,
-      featured: item.featured,
-      sale_price:
-        item.discountPercentage && item.discountPercentage > 0
-          ? Math.floor(
-              item.price * (1 - item.discountPercentage / 100),
-            ).toString()
-          : item.price.toString(),
-    }));
+    const formattedItems = formatProducts(items);
 
     const totalPage = Math.ceil(totalItem / itemPerPage);
 
@@ -137,30 +158,7 @@ export class ProductService {
         take: itemPerPage,
       });
 
-      const formattedItems = items.map((item) => ({
-        id: item.id,
-        barcode: item.barcode,
-        sku: item.sku,
-        name: item.name,
-        price: item.price,
-        discount_percentage: item.discountPercentage,
-        discount_from_date: item.discountFromDate,
-        discount_to_date: item.discountToDate,
-        featured_image: `${process.env.IMAGE_BASE_URL}${item.featuredImage}`,
-        inventory_qty: item.inventoryQty,
-        category_id: item.categoryId,
-        brand_id: item.brandId,
-        created_date: item.createdDate,
-        description: (item.description || '').replace(/<\/?[^>]+(>|$)/g, ''),
-        star: item.star,
-        featured: item.featured,
-        sale_price:
-          item.discountPercentage && item.discountPercentage > 0
-            ? Math.floor(
-                item.price * (1 - item.discountPercentage / 100),
-              ).toString()
-            : item.price.toString(),
-      }));
+      const formattedItems = formatProducts(items);
 
       const totalPage = Math.ceil(totalItem / itemPerPage);
 
@@ -174,7 +172,6 @@ export class ProductService {
         },
       });
     }
-
     return categoryProducts;
   }
 
@@ -194,67 +191,156 @@ export class ProductService {
       throw new NotFoundException('Product not found');
     }
 
-    const featuredImage = `${this.configService.get<string>(
-      'IMAGE_BASE_URL',
-    )}${product.featuredImage}`;
-
-    const detailProduct = {
-      id: product.id,
-      barcode: product.barcode,
-      sku: product.sku,
-      name: product.name,
-      price: product.price,
-      discount_percentage: product.discountPercentage,
-      featured_image: featuredImage,
-      inventory_qty: product.inventoryQty,
-      category_id: product.categoryId,
-      brand_id: product.brandId,
-      created_date: product.createdDate,
-      description: product.description || '',
-      star: product.star,
-      featured: product.featured,
-      sale_price: (
-        product.price -
-        (product.price * product.discountPercentage) / 100
-      ).toFixed(2),
-    };
+    const detailProduct = formatProduct(product);
 
     const relatedProducts = await this.productRepository.find({
       where: {
         categoryId: product.categoryId,
-        id: Not(id), // using query builder alternative below
+        id: Not(id),
       },
     });
 
-    const formattedRelated = relatedProducts
-      .filter((p) => p.id !== product.id) // ensure we exclude the current product
-      .map((related) => ({
-        id: related.id,
-        barcode: related.barcode,
-        sku: related.sku,
-        name: related.name,
-        price: related.price,
-        discount_percentage: related.discountPercentage,
-        featured_image: `${this.configService.get<string>(
-          'IMAGE_BASE_URL',
-        )}${related.featuredImage}`,
-        inventory_qty: related.inventoryQty,
-        category_id: related.categoryId,
-        brand_id: related.brandId,
-        created_date: related.createdDate,
-        description: related.description || '',
-        star: related.star,
-        featured: related.featured,
-        sale_price: (
-          related.price -
-          (related.price * related.discountPercentage) / 100
-        ).toFixed(2),
-      }));
+    const formattedRelated = formatProducts(relatedProducts);
 
     return {
       ...detailProduct,
       relatedProducts: formattedRelated,
       thumbnailItems: [],
     };
+  }
+
+  async getProductsByIds(ids: number[]): Promise<any[]> {
+    if (!ids.length) return [];
+
+    const products = await this.productRepository.find({
+      where: { id: In(ids) },
+    });
+
+    return formatProducts(products);
+  }
+
+  async generateAndStoreEmbedding(product: Product) {
+    const openai = this.getOpenAIClient();
+
+    const inputText = product.name + '\n' + (product.description || '');
+    const safeText = truncateToMaxTokens(inputText, 3000);
+
+    const res = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: safeText,
+    });
+
+    const embedding = res.data[0].embedding;
+
+    // Upsert into product_embedding table
+    const existing = await this.embeddingRepository.findOne({
+      where: { product: { id: product.id } },
+    });
+
+    if (existing) {
+      existing.embedding = embedding;
+      await this.embeddingRepository.save(existing);
+    } else {
+      await this.embeddingRepository.save({
+        product,
+        embedding,
+      });
+    }
+  }
+
+  async recommendFromViewedAndPurchasedRaw(
+    viewedIds: number[],
+    userEmail?: string,
+    topK = 5,
+  ) {
+    const purchasedIds: number[] = [];
+
+    if (userEmail) {
+      const purchasedItems = await this.orderItemRepository.find({
+        where: {
+          order: {
+            customer: { email: userEmail },
+          },
+        },
+        relations: ['product', 'order', 'order.customer'],
+      });
+
+      for (const item of purchasedItems) {
+        if (item.product?.id) {
+          purchasedIds.push(item.product.id);
+        }
+      }
+    }
+
+    const uniqueIds = [...new Set([...viewedIds, ...purchasedIds])];
+    if (uniqueIds.length === 0) return [];
+
+    const userEmbeddings = await this.getEmbeddingVectorsFromIds(uniqueIds);
+    if (userEmbeddings.length === 0) return [];
+
+    const meanEmbedding = this.averageEmbeddings(
+      userEmbeddings.map((e) => e.embedding),
+    );
+
+    const allEmbeddings = await this.embeddingRepository.find({
+      relations: ['product'],
+    });
+
+    const recommendedProducts = allEmbeddings
+      .filter((entry) => {
+        const id = entry.product?.id;
+        return id && !uniqueIds.includes(id);
+      })
+      .map((entry) => ({
+        ...entry.product,
+        score: cosineSimilarity(meanEmbedding, entry.embedding),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topK);
+
+    return recommendedProducts;
+  }
+
+  async explainRecommendation(
+    viewedProducts: Product[],
+    recommendedProducts: Product[],
+  ) {
+    const openai = this.getOpenAIClient();
+
+    const prompt = `
+Bạn là một chuyên gia tư vấn bán hàng cầu lông. Dưới đây là các sản phẩm mà khách hàng đã xem:
+
+${viewedProducts.map((p, i) => `${i + 1}. ${p.name}`).join('\n')}
+
+Từ các sản phẩm đó, hệ thống đề xuất những sản phẩm sau:
+
+${recommendedProducts.map((p, i) => `${i + 1}. ${p.name}`).join('\n')}
+
+Viết một đoạn mô tả ngắn (1-2 câu) giải thích vì sao hệ thống đưa ra đề xuất này, dùng giọng điệu thân thiện và thuyết phục.
+`;
+
+    const res = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    return res.choices[0].message.content?.trim() || '';
+  }
+
+  async handleProductWebhook(id: number, type: string) {
+    if (type === 'delete') {
+      await this.embeddingRepository.delete({ product: { id } });
+      console.log('🗑️ Deleted embedding for product', id);
+      return;
+    }
+
+    const product = await this.productRepository.findOne({ where: { id } });
+    if (!product) {
+      console.warn('⚠️ Product not found:', id);
+      return;
+    }
+
+    await this.generateAndStoreEmbedding(product);
+    console.log('✅ Embedded product:', product.name);
   }
 }

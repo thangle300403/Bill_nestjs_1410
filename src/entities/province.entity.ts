@@ -1,6 +1,6 @@
 import { Entity, PrimaryColumn, Column, OneToMany } from 'typeorm';
-import { District } from './district.entity';
 import { Transport } from './transport.entity';
+import { Ward } from './ward.entity';
 
 @Entity('province')
 export class Province {
@@ -13,8 +13,8 @@ export class Province {
   @Column({ length: 30 })
   type: string;
 
-  @OneToMany(() => District, (district) => district.province)
-  districts: District[];
+  @OneToMany(() => Ward, (ward) => ward.province)
+  wards: Ward[];
 
   @OneToMany(() => Transport, (transport) => transport.province)
   transports: Transport[];

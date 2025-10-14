@@ -1,0 +1,159 @@
+@startuml BillShop Entities Class Diagram
+
+!define ENTITY_COLOR #E1F5FE
+
+
+  class Product {
+    +id: number
+    +barcode: string
+    +sku: string
+    +name: string
+    +price: number
+    +discountPercentage: number
+    +discountFromDate: string
+    +discountToDate: string
+    +featuredImage: string
+    +inventoryQty: number
+    +categoryId: number
+    +brandId: number
+    +createdDate: Date
+    +description: string
+    +star: number
+    +featured: number
+  }
+
+  class Customer {
+    +id: number
+    +name: string
+    +password: string
+    +mobile: string
+    +email: string
+    +login_by: string
+    +ward_id: string
+    +shipping_name: string
+    +shipping_mobile: string
+    +housenumber_street: string
+    +is_active: number
+  }
+
+  class Order {
+    +id: number
+    +created_date: Date
+    +order_status_id: number
+    +staff_id: number
+    +customer_id: number
+    +shipping_ward_id: string
+    +shipping_fullname: string
+    +shipping_mobile: string
+    +payment_method: number
+    +shipping_housenumber_street: string
+    +shipping_fee: number
+    +delivered_date: Date
+  }
+
+  class OrderItem {
+    +productId: number
+    +orderId: number
+    +qty: number
+    +unitPrice: number
+    +totalPrice: number
+  }
+
+  class Category {
+    +id: number
+    +name: string
+  }
+
+  class Brand {
+    +id: number
+    +name: string
+  }
+
+  class Status {
+    +id: number
+    +name: string
+    +description: string
+  }
+
+  class Province {
+    +id: string
+    +name: string
+    +type: string
+  }
+
+  class Ward {
+    +id: string
+    +name: string
+    +type: string
+    +provinceId: string
+  }
+
+  class Comment {
+    +id: number
+    +product_id: number
+    +email: string
+    +fullname: string
+    +star: number
+    +created_date: Date
+    +description: string
+  }
+
+  class Transport {
+    +id: number
+    +provinceId: number
+    +price: number
+  }
+
+  class AthleteGear {
+    +id: number
+    +athlete_name: string
+    +product_id: number
+  }
+
+  class ProductEmbedding {
+    +id: number
+    +embedding: number[]
+    +updated_at: Date
+  }
+
+  class ViewProduct {
+    +id: number
+    +barcode: string
+    +sku: string
+    +name: string
+    +price: number
+    +discountPercentage: number
+    +discountFromDate: string
+    +discountToDate: string
+    +featuredImage: string
+    +inventoryQty: number
+    +categoryId: number
+    +brandId: number
+    +createdDate: Date
+    +description: string
+    +star: number
+    +featured: number
+    +sale_price: number
+  }
+
+
+' Entity Relationships
+Product ||--o{ OrderItem : "has many"
+Product ||--o{ Comment : "has many"
+Product ||--o{ AthleteGear : "has many"
+Product ||--o{ ProductEmbedding : "has one"
+Product ||--o{ ViewProduct : "view"
+
+Order ||--o{ OrderItem : "contains"
+Order }o--|| Customer : "belongs to"
+Order }o--|| Status : "has status"
+
+Category ||--o{ Product : "categorizes"
+Brand ||--o{ Product : "brands"
+
+Province ||--o{ Ward : "contains"
+Province ||--o{ Transport : "has transport"
+
+Ward ||--o{ Customer : "residents"
+
+@enduml

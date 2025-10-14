@@ -18,6 +18,7 @@ import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { OAuthUser } from 'src/type/customer';
 import { CustomerService } from './customer.service';
+import setAuthCookies from 'src/auth/setAuthCookies';
 
 @Injectable()
 export class AuthService {
@@ -33,7 +34,7 @@ export class AuthService {
   async login(email: string, password: string, res: Response) {
     const customer = await this.customerRepository.findOne({
       where: { email },
-      relations: ['ward', 'ward.district', 'ward.district.province'],
+      relations: ['ward', 'ward.province'],
     });
 
     if (!customer) {
@@ -50,37 +51,19 @@ export class AuthService {
     }
 
     // ✅ Generate JWT token
-    const token = jwt.sign(
-      {
-        id: customer.id,
-        email: customer.email,
-        name: customer.name,
-      },
-      this.configService.get<string>('JWT_KEY') || '',
-      { expiresIn: '30d' },
-    );
+    setAuthCookies(customer, res, this.configService);
 
-    // ✅ Set token in cookie
-    res.cookie('access_token', token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    });
-
-    // Flatten district and province IDs
-    const districtId = customer.ward?.district?.id || null;
-    const provinceId = customer.ward?.district?.province?.id || null;
+    // Flatten province ID
+    const provinceId = customer.ward?.province?.id || null;
 
     // Remove sensitive info
-    /* eslint-disable @typescript-eslint/no-unused-vars */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ward, ...userWithoutPassword } = customer;
 
-    // Add district_id and province_id
+    // Add province_id
     const responsePayload = {
       user: {
         ...userWithoutPassword,
-        district_id: districtId,
         province_id: provinceId,
       },
     };
@@ -297,7 +280,7 @@ export class AuthService {
   async getProfile(id: number) {
     const user = await this.customerRepository.findOne({
       where: { id },
-      relations: ['ward', 'ward.district', 'ward.district.province'],
+      relations: ['ward', 'ward.province'],
     });
 
     return user;
@@ -311,8 +294,10 @@ export class AuthService {
     const existingUser: Customer | null =
       await this.customerService.findByEmail(user.email);
 
+    const FRONTEND_URL = this.configService.get<string>('FRONTEND_URL') || '';
+
     if (!existingUser) {
-      const confirmUrl = `http://localhost:3000/oauth/confirm?email=${encodeURIComponent(
+      const confirmUrl = `${FRONTEND_URL}/oauth/confirm?email=${encodeURIComponent(
         user.email,
       )}&name=${encodeURIComponent(user.name)}`;
 
@@ -326,21 +311,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid user record.');
     }
 
-    const payload = {
-      id: existingUser.id,
-      email: existingUser.email,
-      name: existingUser.name,
-    };
+    // Use setAuthCookies to set tokens
+    setAuthCookies(existingUser, res, this.configService);
 
-    const token = await this.jwtService.signAsync(payload);
-
-    res.cookie('access_token', token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    });
-
-    return res.redirect('http://localhost:3000/');
+    return res.redirect(`${FRONTEND_URL}/oauth-success`);
   }
 }

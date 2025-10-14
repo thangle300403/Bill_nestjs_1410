@@ -14,6 +14,7 @@ import { OrdersModule } from './modules/order.module';
 import { TransportModule } from './modules/transport.module';
 import { AddressModule } from './modules/address.module';
 import { CustomerModule } from './modules/customer.module';
+import { AthleteGearModule } from './modules/athlete-gear.module';
 
 @Module({
   imports: [
@@ -27,10 +28,11 @@ import { CustomerModule } from './modules/customer.module';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public', 'images'),
       serveRoot: '/images',
+
       serveStaticOptions: {
         setHeaders: (res) => {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-          res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+          res.setHeader('Access-Control-Allow-Origin', '*');
           // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
           res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         },
@@ -80,6 +82,7 @@ import { CustomerModule } from './modules/customer.module';
     TransportModule,
     AddressModule,
     CustomerModule,
+    AthleteGearModule,
   ],
   controllers: [AppController],
   providers: [AppService],

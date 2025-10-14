@@ -1,0 +1,208 @@
+@startuml
+hide circle
+skinparam classAttributeIconSize 0
+
+class Product {
+  +id: number
+  +barcode: string
+  +sku: string
+  +name: string
+  +price: number
+  +discountPercentage: number
+  +discountFromDate: string
+  +discountToDate: string
+  +featuredImage: string
+  +inventoryQty: number
+  +categoryId: number
+  +brandId: number
+  +createdDate: Date
+  +description: string
+  +star: number
+  +featured: number
+
+  ' Methods from ProductController
+  +index()
+  +getProductDetail()
+  +getComments()
+  +createComment()
+  +getProductsByIds()
+  +recommendWithReason()
+  +handleChange()
+}
+
+class Category {
+  +id: number
+  +name: string
+
+  ' Methods from CategoryController
+  +getCategories()
+}
+
+class Brand {
+  +id: number
+  +name: string
+}
+
+class Order {
+  +id: number
+  +created_date: Date
+  +order_status_id: number
+  +staff_id: number
+  +customer_id: number
+  +shipping_ward_id: string
+  +shipping_fullname: string
+  +shipping_mobile: string
+  +payment_method: number
+  +shipping_housenumber_street: string
+  +shipping_fee: number
+  +delivered_date: Date
+
+  ' Methods from OrdersController
+  +getOrders()
+  +getOrderDetail()
+  +cancelOrder()
+  +checkout()
+  +getAllStatuses()
+}
+
+class OrderItem {
+  +productId: number
+  +orderId: number
+  +qty: number
+  +unitPrice: number
+  +totalPrice: number
+}
+
+class Customer {
+  +id: number
+  +name: string
+  +password: string
+  +mobile: string
+  +email: string
+  +login_by: string
+  +ward_id: string
+  +shipping_name: string
+  +shipping_mobile: string
+  +housenumber_street: string
+  +is_active: number
+
+  ' Methods from CustomerController
+  +updateShippingDefault()
+  +updateAccount()
+  +forgotPassword()
+  +resetPassword()
+
+  ' Methods from AuthController
+  +login()
+  +getMe()
+  +logout()
+  +checkLogin()
+  +register()
+  +activateAccount()
+  +checkEmailNotExist()
+  +refresh()
+
+  ' Methods from OAuthController
+  +googleAuth()
+  +googleCallback()
+  +confirmSignup()
+  +discordLogin()
+  +discordCallback()
+}
+
+class Ward {
+  +id: string
+  +name: string
+  +type: string
+  +provinceId: string
+
+  ' Method from AddressController
+  +getWards()
+}
+
+class Province {
+  +id: string
+  +name: string
+  +type: string
+
+  ' Method from AddressController
+  +getProvinces()
+}
+
+class Status {
+  +id: number
+  +name: string
+  +description: string
+}
+
+class Transport {
+  +id: number
+  +provinceId: number
+  +price: number
+
+  ' Method from TransportController
+  +getShippingFee()
+}
+
+class ViewProduct {
+  +id: number
+  +barcode: string
+  +sku: string
+  +name: string
+  +price: number
+  +discountPercentage: number
+  +discountFromDate: string
+  +discountToDate: string
+  +featuredImage: string
+  +inventoryQty: number
+  +categoryId: number
+  +brandId: number
+  +createdDate: Date
+  +description: string
+  +star: number
+  +featured: number
+  +sale_price: number
+}
+
+class ProductEmbedding {
+  +id: number
+  +embedding: number[]
+  +updated_at: Date
+
+  ' Method from InternalProductController
+  +embed()
+}
+
+class AthleteGear {
+  +id: number
+  +athlete_name: string
+  +product_id: number
+
+  ' Methods from AthleteGearController
+  +getAthletes()
+  +getGear()
+}
+
+'==========================
+' Relationships
+'==========================
+Product "0..*" --> "1" Category : category
+Product "0..*" --> "1" Brand : brand
+Product "1" <-- "0..*" OrderItem : product
+
+Order "1" <-- "0..*" OrderItem : order
+Order "0..*" --> "1" Customer : customer
+Order "0..*" --> "1" Ward : shipping_ward
+Order "0..*" --> "1" Status : status
+
+Ward "0..*" --> "1" Province : province
+
+Province "1" <-- "0..*" Transport : province
+
+ViewProduct "0..*" --> "1" Category : category
+ViewProduct "0..*" --> "1" Brand : brand
+ViewProduct "1" <-- "0..*" OrderItem : product
+
+ProductEmbedding "0..*" --> "1" Product : product
+AthleteGear "0..*" --> "1" Product : product
+@enduml

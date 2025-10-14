@@ -1,0 +1,94 @@
+@startuml UseCaseDiagram
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundcorner 12
+skinparam packageStyle rectangle
+skinparam defaultFontSize 14
+skinparam usecase {
+  BorderColor #333
+  BackgroundColor<<Guest>>   #F9EAEA
+  BackgroundColor<<User>>    #E7F6E7
+  BackgroundColor<<Chatbot>> #FFF6CC
+  BackgroundColor<<Admin>>   #E0ECFF
+}
+
+' --- Actors ---
+actor Guest   as "Guest Visitor"       <<Guest>>
+actor User    as "Registered User"     <<User>>
+actor Chatbot as "Bill Cipher Chatbot" <<Chatbot>>
+actor Admin   as "Admin"               <<Admin>>
+
+' Inheritance
+User --|> Guest
+
+' --- Guest Use Cases ---
+package "Guest Use Cases" {
+  usecase UC_Browse        as "Explore Catalog"        <<Guest>>
+  usecase UC_ViewProduct   as "View Product"           <<Guest>>
+  usecase UC_Register      as "Register"               <<Guest>>
+  usecase UC_ManageCart    as "Cart Ops"               <<Guest>>
+  usecase UC_CheckoutGuest as "Guest Checkout"         <<Guest>>
+  usecase UC_FAQ           as "FAQ & Policy"           <<Chatbot>>
+  usecase UC_Recommend     as "Recommend Products"     <<Chatbot>>
+}
+
+' --- User Use Cases ---
+package "User Use Cases" {
+  usecase UC_OrderHistory   as "Order History"          <<User>>
+  usecase UC_ProfileManage  as "Profile & Address"      <<User>>
+  usecase UC_TryOnVR        as "AI Try-On (Gemini)"     <<User>>
+  usecase UC_CheckoutUser   as "Checkout (Saved Info)"  <<User>>
+  usecase UC_OrderStatus    as "Check Order Status"     <<Chatbot>>
+  usecase UC_CartAssist     as "Add to Cart (Chat)"     <<Chatbot>>
+
+  ' VR shirt features
+  usecase UC_UploadPhoto    as "Upload Photo / Body Metrics"  <<User>>
+  usecase UC_VRShirtTry     as "VR Shirt Try-On"              <<User>>
+}
+
+' --- Admin Use Cases (simplified) ---
+package "Admin Use Cases" {
+  usecase AC_ManageCore   as "Manage Core Data\n(Products, Orders, Users, Reports…)" <<Admin>>
+  usecase AC_AIComment    as "AI Analyze & Moderate Comments" <<Admin>>
+  usecase AC_AIStock      as "AI Stock & Sales Analysis"      <<Admin>>
+}
+
+' --- Connections ---
+' Guest
+Guest --> UC_Browse
+Guest --> UC_ViewProduct
+Guest --> UC_Register
+Guest --> UC_ManageCart
+Guest --> UC_CheckoutGuest
+Guest --> UC_FAQ
+Guest --> UC_Recommend
+
+' User
+User --> UC_OrderHistory
+User --> UC_ProfileManage
+User --> UC_TryOnVR
+User --> UC_CheckoutUser
+User --> UC_OrderStatus
+User --> UC_CartAssist
+User --> UC_FAQ
+User --> UC_Recommend
+User --> UC_VRShirtTry
+User --> UC_VRMatchMate
+
+' Chatbot as provider
+Chatbot --> UC_FAQ
+Chatbot --> UC_Recommend
+Chatbot --> UC_OrderStatus
+Chatbot --> UC_CartAssist
+
+' Admin
+Admin --> AC_ManageCore
+Admin --> AC_AIComment
+Admin --> AC_AIStock
+
+' --- Only 2 relations (includes) ---
+UC_CheckoutUser .> UC_ManageCart : <<include>>
+UC_VRShirtTry   .> UC_UploadPhoto : <<include>>
+
+@enduml

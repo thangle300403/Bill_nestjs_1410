@@ -1,0 +1,109 @@
+
+@startuml
+left to right direction
+skinparam linetype ortho
+skinparam componentStyle rectangle
+skinparam dpi 180
+skinparam roundcorner 10
+skinparam shadowing false
+skinparam defaultFontSize 14
+skinparam ArrowColor #666
+
+skinparam component {
+  BackgroundColor<<Frontend>> #E7F6E7
+  BackgroundColor<<Admin>>    #F0E6FF
+  BackgroundColor<<Backend>>  #E0ECFF
+  BackgroundColor<<AI>>       #FFF6CC
+  BackgroundColor<<Infra>>    #F9F9F9
+  BorderColor #444
+}
+
+actor WebUser <<Frontend>>
+actor AdminUser <<Admin>>
+
+package "Frontend (Next.js)" <<Frontend>> {
+  [Next.js App] as WebApp
+}
+
+package "Chatbot UI (React)" <<Frontend>> {
+  [ChatUI Component] as ChatUI
+  () "Send Message" as IF_Send
+  ChatUI -down-> IF_Send
+}
+
+package "Admin Panel (ExpressJS)" <<Admin>> {
+  [Admin Dashboard (EJS)] as AdminDash
+  () "View Chats" as IF_AdminChat
+  AdminDash -down-> IF_AdminChat
+}
+
+package "Chatbot Supervisor (LangGraph)" <<AI>> {
+  [Supervisor] as Supervisor
+  () "Classify Intent" as IF_Intent
+  () "Route to Agent" as IF_Route
+  () "Save Chat" as IF_SaveChat
+  Supervisor -down-> IF_Intent
+  Supervisor -down-> IF_Route
+  Supervisor -down-> IF_SaveChat
+
+  [productAgent] as ProdAgent
+  [faqAgent] as FaqAgent
+  [consultAgent] as ConsultAgent
+  [cancelOrderAgent] as CancelAgent
+
+  IF_Route --> ProdAgent
+  IF_Route --> FaqAgent
+  IF_Route --> ConsultAgent
+  IF_Route --> CancelAgent
+}
+
+package "NestJS Backend API" <<Backend>> {
+  [Auth Module] as Auth
+  [Product Module] as Product
+  [Order Module] as Order
+  [Customer Module] as Customer
+  [Geo Module] as Geo
+  [Chat History API] as ChatHistory
+}
+
+package "Infrastructure Services" <<Infra>> {
+  database "MySQL" as DB
+  [Cloudinary] as Cloud
+  [Chroma Vector Store] as Chroma <<AI>>
+  [SMTP Email] as SMTP
+  [Payment Gateway] as PayGate
+}
+
+' Flow Connections
+WebUser --> WebApp
+WebApp --> ChatUI
+ChatUI --> IF_Send
+IF_Send --> IF_Intent
+IF_Intent --> Supervisor
+Supervisor --> IF_Route
+Supervisor --> IF_SaveChat
+IF_SaveChat --> ChatHistory
+Supervisor --> Chroma
+ChatUI --> ChatHistory
+
+AdminUser --> AdminDash
+IF_AdminChat --> ChatHistory
+
+WebApp --> Product
+WebApp --> Order
+WebApp --> Auth
+WebApp --> Customer
+
+Order --> PayGate
+Customer --> Cloud
+Product --> Cloud
+Auth --> SMTP
+
+Auth --> DB
+Product --> DB
+Order --> DB
+Customer --> DB
+Geo --> DB
+ChatHistory --> DB
+@enduml
+

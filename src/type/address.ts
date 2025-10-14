@@ -4,18 +4,11 @@ export class ProvinceDto {
   type: string;
 }
 
-export class DistrictDto {
-  id: string;
-  name: string;
-  type: string;
-  provinceId: string;
-}
-
 export class WardDto {
   id: string;
   name: string;
   type: string;
-  districtId: string;
+  provinceId: string;
 }
 
 // delivery-info.interface.ts

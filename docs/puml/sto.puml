@@ -1,0 +1,31 @@
+@startuml
+skinparam rectangle {
+  BorderColor Black
+  FontSize 12
+  FontStyle bold
+  RoundCorner 15
+}
+skinparam arrow {
+  Color Black
+}
+
+' Components
+rectangle "askImageBot.controller.js" as AskBot
+rectangle "uploadShirtImageFromURL.js" as UploadFromURL
+rectangle "uploadGeminiHelper.js" as UploadGemini
+rectangle "Gemini API\n(gemini-2.0-flash-preview-image-generation)" as Gemini #LightBlue
+
+' Flow
+User --> AskBot : Uploads\n- Full-body photo\n- Shirt image URL\n- Shirt name
+AskBot --> UploadFromURL : shirt_image_url
+UploadFromURL --> UploadGemini : uploadToGemini(tempFile)
+UploadGemini --> Gemini : POST /upload\n(base64 image data)
+
+' Back to AskBot
+UploadFromURL --> AskBot : geminiFile + tempPath
+AskBot --> Gemini : generateContent()\n(images + instructions)
+
+Gemini --> AskBot : AI Text + PNG Image
+AskBot --> User : JSON Response\n- aiText\n- generatedImageUrl
+
+@enduml

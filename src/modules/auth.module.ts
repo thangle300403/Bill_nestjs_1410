@@ -3,7 +3,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from '../services/auth.service';
 import { Customer } from '../entities/customer.entity';
 import { Ward } from 'src/entities/ward.entity';
-import { District } from 'src/entities/district.entity';
 import { Province } from 'src/entities/province.entity';
 import { Transport } from 'src/entities/transport.entity';
 import { Order } from 'src/entities/order.entity';
@@ -17,18 +16,23 @@ import { JwtConfig } from 'src/config/jwt.config';
 import { OAuthController } from 'src/controllers/auth/oAuth.controller';
 import { DiscordStrategy } from 'src/auth/discord.strategy';
 import { CustomerModule } from './customer.module';
+import { JwtBlacklist } from 'src/entities/jwt-blacklist.entity';
+import { JwtBlacklistService } from 'src/services/jwt-blacklist.service';
+import { JwtAuthGuard } from 'src/config/jwt-auth.guard';
+import { BlacklistCleanupJob } from 'src/config/blacklist-cleanup.job';
+import { JwtStrategy } from 'src/auth/jwt.strategy';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       Customer,
       Ward,
-      District,
       Province,
       Transport,
       Order,
       Brand,
       Status,
+      JwtBlacklist,
     ]),
     ConfigModule.forRoot(),
     PassportModule,
@@ -36,6 +40,14 @@ import { CustomerModule } from './customer.module';
     CustomerModule,
   ],
   controllers: [AuthController, OAuthController],
-  providers: [AuthService, GoogleStrategy, DiscordStrategy],
+  providers: [
+    AuthService,
+    JwtBlacklistService,
+    GoogleStrategy,
+    DiscordStrategy,
+    JwtAuthGuard,
+    BlacklistCleanupJob,
+    JwtStrategy,
+  ],
 })
 export class AuthModule {}

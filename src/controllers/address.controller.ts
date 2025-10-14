@@ -21,33 +21,15 @@ export class AddressController {
     }
   }
 
-  @Get('districts/province/:provinceId')
-  async getDistricts(
+  @Get('wards/province/:provinceId')
+  async getWards(
     @Param('provinceId') provinceId: string,
     @Res() res: Response,
   ) {
     try {
       const districts =
-        await this.addressService.getDistrictsByProvinceId(provinceId);
+        await this.addressService.getWardsByProvinceId(provinceId);
       return res.json(districts);
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : 'Lỗi không xác định.';
-      return res.status(500).json({
-        message: 'Lỗi khi lấy phí ship.',
-        error: message,
-      });
-    }
-  }
-
-  @Get('wards/district/:districtId')
-  async getWards(
-    @Param('districtId') districtId: string,
-    @Res() res: Response,
-  ) {
-    try {
-      const wards = await this.addressService.getWardsByDistrictId(districtId);
-      return res.json(wards);
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : 'Lỗi không xác định.';

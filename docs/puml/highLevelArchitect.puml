@@ -1,0 +1,56 @@
+@startuml BillShop General Architecture
+
+title BillShop – General High-Level Architecture
+
+skinparam linetype ortho
+skinparam roundcorner 15
+skinparam shadowing false
+skinparam defaultFontName Inter
+skinparam defaultFontSize 13
+
+actor "Customer" as customer
+actor "Admin" as admin
+
+frame "Client Layer" {
+    node "Customer Web App (Next.js)" as frontend
+    node "Chatbot UI" as chatbot
+    node "Admin Dashboard" as admindash
+}
+
+frame "Backend Layer" {
+    node "API & Business Logic (NestJS)" as backend
+}
+
+frame "AI Layer" {
+    node "AI Orchestration\n(LangGraph / LLMs)" as ai
+}
+
+frame "Data Layer" {
+    database "Relational DB (MySQL)" as db
+    node "Object Storage" as storage
+}
+
+frame "External Services" {
+    node "Payment Gateway" as payment
+    node "Email/SMS Service" as notify
+    node "CDN" as cdn
+}
+
+' === FLOWS (with right-angle arrows) ===
+customer -right-> frontend
+customer -down-> chatbot
+admin -down-> admindash
+
+frontend -down-> backend
+chatbot -down-> ai
+admindash -down-> backend
+
+backend -down-> db
+backend -down-> storage
+backend -down-> payment
+backend -down-> notify
+frontend -down-> cdn
+ai -left-> backend
+ai -down-> db
+
+@enduml

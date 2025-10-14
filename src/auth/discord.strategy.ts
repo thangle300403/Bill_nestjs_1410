@@ -13,7 +13,7 @@ export class DiscordStrategy extends PassportStrategy(Strategy, 'discord') {
     super({
       clientID: process.env.DISCORD_CLIENT_ID,
       clientSecret: process.env.DISCORD_CLIENT_SECRET,
-      callbackURL: 'http://localhost:3091/api/v1/discord/callback',
+      callbackURL: process.env.DISCORD_CALLBACK_URL,
       scope: ['identify', 'email'],
     });
   }

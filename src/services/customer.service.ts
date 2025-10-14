@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Customer } from 'src/entities/customer.entity';
-import { District } from 'src/entities/district.entity';
 import { Ward } from 'src/entities/ward.entity';
 import {
   CustomerUpdateFields,
@@ -27,9 +26,6 @@ export class CustomerService {
 
     @InjectRepository(Ward)
     private readonly wardRepository: Repository<Ward>,
-
-    @InjectRepository(District)
-    private readonly districtRepository: Repository<District>,
 
     private readonly mailerService: MailerService,
   ) {}
@@ -78,33 +74,22 @@ export class CustomerService {
       where: { id: customerId },
     });
 
-    //Get province and district
-    let districtId: string | null = null;
+    //Get province
     let provinceId: string | null = null;
 
     if (updatedCustomer?.ward_id) {
       const ward = await this.wardRepository.findOne({
         where: { id: updatedCustomer.ward_id },
-        relations: ['district'],
+        relations: ['province'],
       });
 
-      if (ward?.district?.id) {
-        districtId = ward.district.id;
-
-        const district = await this.districtRepository.findOne({
-          where: { id: districtId },
-          relations: ['province'],
-        });
-
-        if (district?.province?.id) {
-          provinceId = district.province.id;
-        }
+      if (ward?.province?.id) {
+        provinceId = ward.province.id;
       }
     }
 
     return {
       ...updatedCustomer,
-      district_id: districtId,
       province_id: provinceId,
     } as EnrichedCustomer;
   }

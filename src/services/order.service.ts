@@ -127,9 +127,8 @@ export class OrderService {
 
       const ward = await this.wardRepository.findOne({
         where: { id: order.shipping_ward_id },
-        relations: ['district', 'district.province'],
+        relations: ['province'],
       });
-
       formattedOrders.push({
         id: order.id,
         created_date: order.created_date.toLocaleString('vi-VN', {
@@ -152,8 +151,7 @@ export class OrderService {
         order_items: formattedItems,
         status_description: status?.description || 'Chưa xác định',
         ward_name: ward?.name,
-        district_name: ward?.district?.name,
-        province_name: ward?.district?.province?.name,
+        province_name: ward?.province?.name,
       });
     }
 
@@ -219,7 +217,7 @@ export class OrderService {
 
     const ward = await this.wardRepository.findOne({
       where: { id: order.shipping_ward_id },
-      relations: ['district', 'district.province'],
+      relations: ['province'],
     });
 
     return {
@@ -244,8 +242,7 @@ export class OrderService {
       order_items: formattedItems,
       status_description: status?.description || 'Chưa xác định',
       ward_name: ward?.name,
-      district_name: ward?.district?.name,
-      province_name: ward?.district?.province?.name,
+      province_name: ward?.province?.name,
       total_price,
     };
   }
@@ -297,7 +294,6 @@ export class OrderService {
     if (!cartItems?.length) {
       throw new BadRequestException('Giỏ hàng trống.');
     }
-
     if (!loggedUser?.id) {
       throw new UnauthorizedException('Người dùng chưa đăng nhập.');
     }
@@ -348,10 +344,10 @@ export class OrderService {
     // Fetch full address info
     const ward = await this.wardRepository.findOne({
       where: { id: String(deliveryInfo.ward) },
-      relations: ['district', 'district.province'],
+      relations: ['province'],
     });
 
-    const fullAddress = `${deliveryInfo.address}, ${ward?.name || ''}, ${ward?.district?.name || ''}, ${ward?.district?.province?.name || ''}`;
+    const fullAddress = `${deliveryInfo.address}, ${ward?.name || ''}, ${ward?.name || ''}, ${ward?.province?.name || ''}`;
 
     const paymentMethodMap: Record<number, string> = {
       0: 'Thanh toán khi nhận hàng (COD)',

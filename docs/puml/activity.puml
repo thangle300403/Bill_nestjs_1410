@@ -1,0 +1,51 @@
+@startuml
+
+start
+
+:User opens Next.js App;
+:Browse products / Access Chatbot UI;
+
+if (User interacts with chatbot?) then (yes)
+  :Send message from ChatUI (React);
+  :Forward message to Chatbot Supervisor (LangGraph);
+
+  if (Intent classified?) then (yes)
+    switch (Intent type)
+      case (Consultation)
+        :Route to consultAgent;
+        :Fetch product info via Product Module;
+      case (FAQ)
+        :Route to faqAgent;
+        :Query Chroma Vector Store;
+      case (Cancel Order)
+        :Route to cancelOrderAgent;
+        :Validate orderId via Order Module;
+      case (Product SQL Query)
+        :Route to productAgent;
+        :Query MySQL via NestJS Product Module;
+    endswitch
+    :Save Chat History in DB;
+  else (no)
+    :Return fallback response;
+  endif
+
+else (no)
+  :User continues browsing Next.js pages;
+  :View Products / Place Order;
+endif
+
+if (Order placed?) then (yes)
+  :Authenticate via Auth Module;
+  :Process payment via Payment Gateway;
+  :Upload product image/media to Cloudinary;
+  :Send confirmation email (SMTP);
+  :Update Order and Customer modules in MySQL;
+else (no)
+  :Session continues;
+endif
+
+:Admin logs into Admin Panel (ExpressJS);
+:View chats, orders, customers in dashboard;
+
+stop
+@enduml

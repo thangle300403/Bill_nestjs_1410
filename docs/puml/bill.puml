@@ -1,0 +1,67 @@
+@startuml
+skinparam rectangle {
+  BorderColor Black
+  FontSize 12
+  FontStyle bold
+  RoundCorner 15
+}
+skinparam arrow {
+  Color Black
+}
+
+' Nodes
+rectangle "User" as User
+rectangle "supervisorGraph" as Supervisor #LightBlue
+rectangle "intentClassifier" as Intent #LightPink
+
+rectangle "consultAgent" as Consult
+rectangle "cancelAgent" as CancelOrder
+rectangle "policyAgent" as Policy
+rectangle "SQL Planner" as SQLPlanner
+
+' SQL Planner sub-steps
+rectangle "sql_generator" as SQLGen
+rectangle "sql_executor" as SQLExec
+rectangle "result_refiner" as ResultRef
+rectangle "responder" as Responder
+
+' Vector stores
+rectangle "Chroma consult_docs" as ChromaConsult #LightYellow
+rectangle "Chroma sql_docs" as ChromaSQL #LightYellow
+rectangle "Chroma policy_docs" as ChromaPolicy #LightYellow
+
+' Main flow
+User --> Supervisor
+Supervisor --> Intent
+Intent --> CancelOrder : cancel
+Intent --> Consult : consult
+Consult ..> Intent 
+Policy ..> Intent
+Intent --> Policy : policy
+Intent --> SQLPlanner : sql
+
+' Consult flow
+Consult --> ChromaConsult
+
+' Cancel flow
+CancelOrder ..> CancelOrder : confirm/retry
+
+' Policy flow
+Policy --> ChromaPolicy
+
+' SQL Planner detailed flow
+SQLPlanner --> SQLGen
+SQLGen --> SQLExec
+SQLExec --> ResultRef
+ResultRef --> Responder
+
+' Loop-back from each tool
+SQLGen ..> SQLPlanner : error/retry
+SQLExec ..> SQLPlanner : error/retry
+ResultRef ..> SQLPlanner : error/retry
+Responder ..> Intent
+
+' Data connections
+ResultRef --> ChromaSQL
+
+@enduml

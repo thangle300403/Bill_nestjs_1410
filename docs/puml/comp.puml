@@ -1,0 +1,56 @@
+@startuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 18
+skinparam componentStyle rectangle
+skinparam rectangleFontSize 18
+skinparam interfaceFontSize 18
+
+' Square layout
+top to bottom direction
+
+' Client Components
+component "Customer Web App\n(Next.js)" as WebApp
+component "Chatbot Interface" as ChatbotUI
+component "Admin Dashboard\n(Express + EJS)" as AdminUI
+
+' AI Components
+component "AI Orchestrator\n(LangGraph / LangChain)" as Orchestrator
+component "LLMs\n(OpenAI / Gemini)" as LLMs
+component "Vector Store\n(Chroma)" as VectorDB
+
+' Backend Components
+component "API Gateway" as APIGateway
+component "Business Logic\n(NestJS)" as BusinessLogic
+
+' Data Components
+component "Relational DB\n(MySQL)" as MySQL
+component "Object Storage" as Storage
+
+' External Services
+component "Email / SMS Service" as Mail
+
+' Interfaces
+interface "User Queries" as UQ
+interface "HTTPS API Calls" as API
+interface "DB Access" as DBA
+interface "Storage Access" as STA
+interface "External API" as EXT
+
+' Connections
+ChatbotUI --( UQ
+WebApp --( UQ
+WebApp --( API
+AdminUI --( API
+UQ -- Orchestrator
+Orchestrator -- LLMs
+Orchestrator -- VectorDB
+API -- APIGateway
+APIGateway -- BusinessLogic
+BusinessLogic --( DBA
+BusinessLogic --( STA
+BusinessLogic --( EXT
+DBA -- MySQL
+STA -- Storage
+EXT -- Mail
+
+@enduml

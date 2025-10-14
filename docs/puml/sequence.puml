@@ -1,0 +1,92 @@
+@startuml
+skinparam sequenceMessageAlign center
+actor Customer
+participant "Browser" as Browser
+participant "Next.js Platform" as Frontend
+participant "NestJS API" as Backend
+database "MySQL Database" as DB
+participant "LangGraph Chatbot" as Chatbot
+participant "Chroma Vector Store" as Chroma
+participant "VR Engine" as VR
+participant "Payment Gateway" as Payment
+participant "Email Service" as Mail
+
+== General Use Cases ==
+Customer -> Browser : Navigate to Home Page
+Browser -> Frontend : Load homepage
+Frontend --> Browser : Display homepage
+
+Customer -> Browser : Fill Contact Form
+Browser -> Frontend : Send contact message
+Frontend -> Backend : Save message
+Backend -> DB : INSERT contact
+DB --> Backend
+Backend --> Frontend : Confirmation
+Frontend --> Browser : Contact Saved
+
+Customer -> Browser : Register (email/password)
+Browser -> Frontend : Submit credentials
+Frontend -> Backend : Register user
+Backend -> DB : INSERT customer
+Backend --> Mail : Send activation email
+Backend --> Frontend : Registration success
+
+Customer -> Browser : Login (email/password)
+Browser -> Frontend : Submit login
+Frontend -> Backend : Auth login()
+Backend -> DB : Verify user
+Backend --> Frontend : Token + profile
+
+Customer -> Browser : OAuth Login (Google/Discord)
+Browser -> Frontend : Trigger OAuth
+Frontend -> Backend : Redirect + validate
+Backend -> DB : Create or fetch user
+Backend --> Frontend : Authenticated
+
+== Cart Operations ==
+Customer -> Browser : Add to Cart
+Browser -> Frontend : POST cart
+Frontend -> Backend : Save item
+Backend -> DB : INSERT cart item
+
+Customer -> Browser : Checkout
+Browser -> Frontend : Submit checkout form
+Frontend -> Backend : POST /checkout
+Backend -> DB : INSERT orders + items
+Backend -> Payment : Process transaction
+Payment --> Backend : Success
+Backend -> DB : Update status = paid
+Backend -> Mail : sendOrderConfirmation()
+
+== Shipping Fee ==
+Browser -> Frontend : GET /shipping-fee?provinceId=79
+Frontend -> Backend : Fetch shipping fee
+Backend -> DB : SELECT * FROM transport WHERE provinceId = 79
+DB --> Backend : 25,000 VND
+Backend --> Frontend : Return fee
+
+== Chatbot Interaction ==
+Customer -> Browser : Open Chatbot
+Browser -> Frontend : Send message
+Frontend -> Chatbot : Classify intent
+Chatbot -> Chroma : Semantic search (FAQ / Product)
+Chatbot -> Backend : Fetch product/order info
+Backend -> DB : SELECT / JOIN
+Chatbot -> DB : Save to ChatbotHistory
+Chatbot --> Frontend : AI response
+Frontend --> Browser : Show chat answer
+
+== Comment / Review ==
+Customer -> Browser : Submit product comment
+Browser -> Frontend : POST /comment
+Frontend -> Backend : createComment()
+Backend -> DB : INSERT comment
+
+== VR Try-On ==
+Customer -> Browser : Try Shirt (upload image)
+Browser -> Frontend : Send dimensions/image
+Frontend -> VR : Generate try-on result
+VR --> Frontend : Return virtual preview
+Frontend --> Browser : Show result
+
+@enduml

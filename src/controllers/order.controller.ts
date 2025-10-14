@@ -87,11 +87,21 @@ export class OrdersController {
 
   @Post('checkout')
   async checkout(
+    @Req() req: Request,
     @Body('cartItems') cartItems: CartItem[],
     @Body('deliveryInfo') deliveryInfo: DeliveryInfo,
-    @Body('loggedUser') loggedUser: LoggedUser,
   ) {
-    return this.orderService.checkout(cartItems, deliveryInfo, loggedUser);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const token = req.cookies?.access_token;
+    if (!token) {
+      throw new UnauthorizedException('Access token missing');
+    }
+
+    const jwtKey = this.configService.get<string>('JWT_KEY') || '';
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    const decoded = jwt.verify(token, jwtKey) as LoggedUser;
+
+    return this.orderService.checkout(cartItems, deliveryInfo, decoded);
   }
 
   @Get('status')

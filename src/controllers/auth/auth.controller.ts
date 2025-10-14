@@ -15,6 +15,9 @@ import * as jwt from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { Request } from 'express';
+import { JwtService } from '@nestjs/jwt';
+import { JwtBlacklistService } from 'src/services/jwt-blacklist.service';
+import { getTokenExpiry } from 'src/config/tokenExpired';
 
 // Extend Express Request interface to include 'user'
 declare module 'express' {
@@ -22,7 +25,6 @@ declare module 'express' {
     user?: any;
   }
 }
-import { JwtService } from '@nestjs/jwt';
 
 @Controller('api/v1')
 export class AuthController {
@@ -30,6 +32,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
     private jwtService: JwtService,
+    private readonly jwtBlacklistService: JwtBlacklistService,
   ) {}
 
   @Post('login')
@@ -46,7 +49,7 @@ export class AuthController {
       ?.access_token;
 
     if (!token) {
-      throw new UnauthorizedException('Không tìm thấy token.');
+      return null;
     }
 
     try {
@@ -74,12 +77,28 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const accessToken = req.cookies?.access_token;
+    if (accessToken) {
+      try {
+        const expiresAt = getTokenExpiry(accessToken); // decode JWT exp
+        await this.jwtBlacklistService.blacklistToken(accessToken, expiresAt);
+      } catch (err) {
+        console.warn('[Logout] Failed to blacklist token:', err);
+      }
+    }
     res.clearCookie('access_token', {
       httpOnly: true,
       sameSite: 'lax',
       secure: false, // 🔒 set true in production with HTTPS
       path: '/', // important: make sure path matches the original set-cookie
+    });
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: false,
+      path: '/',
     });
     return { message: 'Đăng xuất thành công.' };
   }
@@ -132,5 +151,53 @@ export class AuthController {
   async checkEmailNotExist(@Param('email') email: string) {
     const exists = await this.authService.checkIfEmailExists(email);
     return !exists;
+  }
+
+  @Post('refresh')
+  refresh(@Req() req: Request, @Res() res: Response) {
+    console.log(
+      `[REFRESH CALLED] ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
+    );
+    const rt: string | undefined = (req.cookies as { refresh_token?: string })
+      ?.refresh_token;
+    if (!rt) throw new UnauthorizedException();
+
+    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+    if (!refreshSecret)
+      throw new Error('JWT_REFRESH_SECRET is not set in environment');
+
+    let payload: { id: number; email: string };
+    try {
+      payload = jwt.verify(rt, refreshSecret) as { id: number; email: string };
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err) {
+      throw new UnauthorizedException('Refresh token không hợp lệ.');
+    }
+
+    const accessSecret = this.configService.get<string>('JWT_KEY');
+    if (!accessSecret) throw new Error('JWT_KEY is not set in environment');
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const accessExpiresIn =
+      this.configService.get('JWT_ACCESS_EXPIRES_IN') || '15m';
+    const accessCookieMaxAge = parseInt(
+      this.configService.get('JWT_ACCESS_COOKIE_MAXAGE') || '900000',
+    );
+
+    const newAccessToken = jwt.sign(
+      { id: payload.id, email: payload.email },
+      accessSecret,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      { expiresIn: accessExpiresIn },
+    );
+
+    res.cookie('access_token', newAccessToken, {
+      httpOnly: true,
+      maxAge: accessCookieMaxAge,
+      sameSite: 'lax',
+      secure: true,
+    });
+
+    return res.json({ success: true });
   }
 }
