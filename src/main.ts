@@ -3,15 +3,21 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { ConfigService } from '@nestjs/config';
+// import { getSSLOptions } from './sslOptions';
 
 async function bootstrap() {
+  // const httpsOptions = getSSLOptions(
+  //   'C:\\Users\\Administrator\\Desktop\\ssl\\billbad.top',
+  // );
+
+  // const app = await NestFactory.create(AppModule, { httpsOptions });
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
 
-  const FRONTEND_URL = configService.get<string>('FRONTEND_URL');
+  // const FRONTEND_URL = configService.get<string>('FRONTEND_URL');
   const EXPRESS_URL = configService.get<string>('EXPRESS_URL');
-  const NEST_URL = configService.get<string>('NEST_URL');
+  // const NEST_URL = configService.get<string>('NEST_URL');
 
   app.use(cookieParser());
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -31,13 +37,24 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: [FRONTEND_URL],
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:80',
+      'http://localhost',
+      'http://14.225.192.76:3000',
+      'http://14.225.192.76:80',
+      'http://14.225.192.76',
+      'https://billwinslow.top',
+      'https://www.billwinslow.top',
+      'https://billbad.com',
+      'https://www.billbad.com',
+    ],
     credentials: true,
   });
 
-  const port = process.env.PORT ? Number(process.env.PORT) : 3001;
+  const port = 3091;
   await app.listen(port);
-
-  console.log(`Server is running on ${NEST_URL}`);
+  // console.log(`✅ HTTPS NestJS running at https://billbad.top:${port}`);
+  console.log(`✅ HTTP NestJS running at http://localhost:${port}`);
 }
 bootstrap();
