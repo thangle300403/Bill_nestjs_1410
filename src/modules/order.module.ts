@@ -26,5 +26,6 @@ import { OrderService } from 'src/services/order.service';
   ],
   controllers: [OrdersController],
   providers: [OrderService],
+  exports: [OrderService],
 })
 export class OrdersModule {}

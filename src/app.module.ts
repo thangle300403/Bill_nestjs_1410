@@ -15,6 +15,9 @@ import { TransportModule } from './modules/transport.module';
 import { AddressModule } from './modules/address.module';
 import { CustomerModule } from './modules/customer.module';
 import { AthleteGearModule } from './modules/athlete-gear.module';
+import { VnpayModule } from 'nestjs-vnpay';
+import { HashAlgorithm, ignoreLogger } from 'vnpay';
+import { VnpayController } from './controllers/vnpay.controller';
 
 @Module({
   imports: [
@@ -73,6 +76,18 @@ import { AthleteGearModule } from './modules/athlete-gear.module';
       }),
     }),
 
+    VnpayModule.register({
+      tmnCode: '94KSVO7C',
+      secureSecret: 'V09NH8NL651Q8LP4ZRZ9A8CXQNXL1FSC',
+      vnpayHost: 'https://sandbox.vnpayment.vn',
+
+      // tuỳ chọn
+      testMode: true,
+      hashAlgorithm: HashAlgorithm.SHA512,
+      enableLog: true,
+      loggerFn: ignoreLogger,
+    }),
+
     // Feature Modules
     ProductModule,
     CategoryModule,
@@ -84,7 +99,7 @@ import { AthleteGearModule } from './modules/athlete-gear.module';
     CustomerModule,
     AthleteGearModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, VnpayController],
   providers: [AppService],
 })
 export class AppModule {}

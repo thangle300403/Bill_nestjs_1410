@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   BadRequestException,
   ForbiddenException,
@@ -62,6 +65,53 @@ export class OrderService {
   ) {}
   async getAllStatuses(): Promise<OrderStatus[]> {
     return await this.statusRepository.find();
+  }
+
+  async createOrder(data: any) {
+    const { user, deliveryInfo, cartItems } = data;
+
+    console.log('data received in createOrder:', data);
+
+    // 1️⃣ Tính tổng tiền
+    const total_price = cartItems.reduce(
+      (sum: number, item: any) => sum + item.sale_price * item.qty,
+      0,
+    );
+
+    // 2️⃣ Tạo đơn hàng chính (khớp đúng entity Order)
+    const newOrder = this.orderRepository.create({
+      customer_id: user?.id || null,
+      shipping_fullname: deliveryInfo.fullname,
+      shipping_mobile: deliveryInfo.mobile,
+      shipping_housenumber_street: deliveryInfo.address,
+      shipping_ward_id: deliveryInfo.ward_id,
+      payment_method: 1, // VNPay
+      order_status_id: 1, // ordered
+      shipping_fee: deliveryInfo.shipping_fee || 27000,
+      created_date: new Date(),
+    });
+
+    const order = await this.orderRepository.save(newOrder);
+
+    console.log(`🧾 Tạo đơn hàng chính #${order.id}`);
+
+    // 3️⃣ Lưu chi tiết sản phẩm (khớp đúng entity OrderItem)
+    const orderItems = cartItems.map((item: any) =>
+      this.orderItemRepository.create({
+        orderId: order.id,
+        productId: item.id,
+        qty: item.qty,
+        unitPrice: item.sale_price,
+        totalPrice: item.sale_price * item.qty,
+      }),
+    );
+
+    console.log(`🧾 Tạo ${orderItems.length} mục cho đơn hàng #${order.id}`);
+
+    await this.orderItemRepository.save(orderItems);
+
+    console.log(`🧾 Đã tạo đơn hàng #${order.id} - Tổng tiền: ${total_price}`);
+    return order;
   }
 
   async getFormattedOrders(email: string): Promise<FormattedOrder[]> {
@@ -442,6 +492,12 @@ export class OrderService {
       deliveryInfo,
       cartItems,
     };
+  }
+
+  async markOrderAsPaid(orderId: string) {
+    // Cập nhật trạng thái = 7 ("paid")
+    await this.orderRepository.update(orderId, { order_status_id: 7 });
+    console.log(`✅ Order #${orderId} đã được cập nhật trạng thái "paid"`);
   }
 
   private getBase64Image(filename: string): string {
