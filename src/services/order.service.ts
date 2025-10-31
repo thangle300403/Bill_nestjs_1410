@@ -336,6 +336,97 @@ export class OrderService {
     return { message: `✅ Đã huỷ đơn hàng #${orderId}` };
   }
 
+  private async sendOrderEmail(
+    order: Order,
+    loggedUser: LoggedUser,
+    deliveryInfo: DeliveryInfo,
+    cartItems: CartItem[],
+    shipping_fee: number,
+    type: 'checkout' | 'paid',
+  ) {
+    const ward = await this.wardRepository.findOne({
+      where: { id: String(deliveryInfo.ward) },
+      relations: ['province'],
+    });
+
+    const fullAddress = `${deliveryInfo.address}, ${ward?.name || ''}, ${ward?.province?.name || ''}`;
+
+    const paymentMethodMap: Record<number, string> = {
+      0: 'Thanh toán khi nhận hàng (COD)',
+      1: 'Chuyển khoản ngân hàng',
+      2: 'Thanh toán qua ví điện tử',
+      3: 'Thẻ tín dụng/Ghi nợ',
+    };
+
+    const paymentMethodText =
+      paymentMethodMap[deliveryInfo.payment_method] || 'Không xác định';
+
+    const productListHTML = cartItems
+      .map(
+        (item) => `
+      <li style="margin-bottom: 10px;">
+        ${item.name} - SL: ${item.qty} - Đơn giá: ${item.sale_price.toLocaleString()}đ - Thành tiền: ${(item.qty * item.sale_price).toLocaleString()}đ
+      </li>
+    `,
+      )
+      .join('');
+
+    const web = process.env.FRONTEND_URL;
+
+    const isPaid = type === 'paid';
+
+    const subject = isPaid
+      ? `Godashop - Đơn hàng #${order.id} đã được thanh toán`
+      : `Godashop - Xác nhận đơn hàng #${order.id}`;
+
+    const messageBody = isPaid
+      ? `<p>🎉 Xin chúc mừng, đơn hàng <b>#${order.id}</b> của bạn đã được thanh toán thành công!</p>`
+      : `<p>Chúng tôi đã nhận được đơn hàng của bạn và đang xử lý:</p>`;
+
+    const htmlContent = `
+  <!DOCTYPE html>
+  <html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>${subject}</title>
+    <style>
+      body { font-family: Arial, sans-serif; color: #333; }
+      .card { max-width: 500px; margin: auto; border: 1px solid #ccc; padding: 20px; }
+      h2 { color: #000; }
+      ul { padding-left: 20px; }
+      .total { font-weight: bold; margin-top: 10px; }
+      .info { margin-top: 15px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>${isPaid ? '💳 Xác nhận thanh toán thành công' : '🎉 Cảm ơn bạn đã đặt hàng tại Godashop!'}</h2>
+      <p>Xin chào ${deliveryInfo.fullname},</p>
+      ${messageBody}
+      <ul>${productListHTML}</ul>
+      <hr/>
+      <p class="total">Phí giao hàng: ${shipping_fee.toLocaleString()}đ</p>
+      <p class="info">
+        <b>Địa chỉ giao hàng:</b><br>
+        ${fullAddress}<br>
+        <b>Hình thức thanh toán:</b> ${paymentMethodText}<br>
+        <b>SĐT:</b> ${deliveryInfo.mobile}
+      </p>
+      <hr/>
+      <p>Bạn có thể xem chi tiết đơn hàng tại <a href="${web}">${web}</a></p>
+      <p>Trân trọng,<br/>Đội ngũ Godashop</p>
+    </div>
+  </body>
+  </html>
+  `;
+
+    await this.mailerService.sendMail({
+      to: loggedUser.email,
+      subject,
+      html: htmlContent,
+    });
+  }
+
   async checkout(
     cartItems: CartItem[],
     deliveryInfo: DeliveryInfo,
@@ -349,9 +440,7 @@ export class OrderService {
     }
 
     const transport = await this.transportRepository.findOne({
-      where: {
-        province: { id: deliveryInfo.province },
-      },
+      where: { province: { id: deliveryInfo.province } },
       relations: ['province'],
     });
 
@@ -364,7 +453,6 @@ export class OrderService {
     const orderData: DeepPartial<Order> = {
       created_date: new Date().toISOString(),
       order_status_id: 1,
-      staff_id: undefined,
       customer_id: loggedUser.id,
       shipping_fullname: deliveryInfo.fullname,
       shipping_mobile: deliveryInfo.mobile,
@@ -387,103 +475,17 @@ export class OrderService {
         unitPrice: item.sale_price,
         totalPrice: item.qty * item.sale_price,
       });
-
       await this.orderItemRepository.save(orderItem);
     }
 
-    // Fetch full address info
-    const ward = await this.wardRepository.findOne({
-      where: { id: String(deliveryInfo.ward) },
-      relations: ['province'],
-    });
-
-    const fullAddress = `${deliveryInfo.address}, ${ward?.name || ''}, ${ward?.name || ''}, ${ward?.province?.name || ''}`;
-
-    const paymentMethodMap: Record<number, string> = {
-      0: 'Thanh toán khi nhận hàng (COD)',
-      1: 'Chuyển khoản ngân hàng',
-      2: 'Thanh toán qua ví điện tử',
-      3: 'Thẻ tín dụng/Ghi nợ',
-    };
-    const paymentMethodText =
-      paymentMethodMap[deliveryInfo.payment_method] || 'Không xác định';
-
-    const productListHTML = cartItems
-      .map((item) => {
-        const imageName = item.featured_image?.split('/').pop();
-        const imgBase64 = imageName ? this.getBase64Image(imageName) : '';
-        return `
-        <li style="margin-bottom: 15px;">
-          <img src="${imgBase64}" alt="${item.name}" width="80" style="display:block; margin-bottom: 5px;" />
-          ${item.name} - SL: ${item.qty} - Đơn giá: ${item.sale_price.toLocaleString()}đ - Thành tiền: ${(item.qty * item.sale_price).toLocaleString()}đ
-        </li>
-      `;
-      })
-      .join('');
-
-    const web = process.env.FRONTEND_URL;
-
-    const htmlContent = `
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <title>ĐƠN HÀNG MỚI</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      color: #333;
-    }
-    .card {
-      max-width: 500px;
-      margin: auto;
-      border: 1px solid #ccc;
-      padding: 20px;
-    }
-    h2 {
-      color: #000;
-    }
-    ul {
-      padding-left: 20px;
-    }
-    .total {
-      font-weight: bold;
-      margin-top: 10px;
-    }
-    .info {
-      margin-top: 15px;
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>🎉 Cảm ơn bạn đã đặt hàng tại Godashop!</h2>
-    <p>Xin chào ${deliveryInfo.fullname},</p>
-    <p>Chúng tôi đã nhận được đơn hàng của bạn:</p>
-    <ul>
-      ${productListHTML}
-    </ul>
-    <hr/>
-    <p class="total">Phí giao hàng: ${shipping_fee.toLocaleString()}đ</p>
-    <p class="info">
-      <b>Địa chỉ giao hàng:</b><br>
-      ${fullAddress}<br>
-      <b>Hình thức thanh toán:</b> ${paymentMethodText}<br>
-      <b>SĐT:</b> ${deliveryInfo.mobile}
-    </p>
-    <hr/>
-    <p>Đơn hàng sẽ được xử lý trong vòng 3 ngày. Bạn có thể kiểm tra chi tiết đơn hàng của mình trên website: <a href="${web}">${web}</a></p>
-    <p>Trân trọng,<br/>Đội ngũ Godashop</p>
-  </div>
-</body>
-</html>
-`;
-
-    await this.mailerService.sendMail({
-      to: loggedUser.email,
-      subject: 'Godashop - Xác nhận đơn hàng',
-      html: htmlContent,
-    });
+    await this.sendOrderEmail(
+      order,
+      loggedUser,
+      deliveryInfo,
+      cartItems,
+      shipping_fee,
+      'checkout',
+    );
 
     return {
       message: 'Đơn hàng đã được tạo thành công.',
@@ -495,11 +497,55 @@ export class OrderService {
   }
 
   async markOrderAsPaid(orderId: string) {
-    // Cập nhật trạng thái = 7 ("paid")
     await this.orderRepository.update(orderId, { order_status_id: 7 });
-    console.log(`✅ Order #${orderId} đã được cập nhật trạng thái "paid"`);
-  }
 
+    const order = await this.orderRepository.findOne({
+      where: { id: +orderId },
+      relations: ['customer'],
+    });
+
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
+
+    const customer = await this.customerRepository.findOne({
+      where: { id: order.customer_id },
+    });
+
+    if (!customer) throw new NotFoundException('Không tìm thấy khách hàng.');
+
+    const deliveryInfo: DeliveryInfo = {
+      fullname: order.shipping_fullname,
+      mobile: order.shipping_mobile,
+      address: order.shipping_housenumber_street,
+      province: '',
+      ward: Number(order.shipping_ward_id),
+      payment_method: Number(order.payment_method),
+    };
+
+    // ✅ Lấy order items để hiển thị trong email
+    const orderItems = await this.orderItemRepository.find({
+      where: { orderId: +orderId },
+    });
+
+    const cartItems: CartItem[] = orderItems.map((item) => ({
+      id: item.productId,
+      qty: item.qty,
+      sale_price: item.unitPrice,
+      name: `Sản phẩm #${item.productId}`,
+    }));
+
+    const shipping_fee = order.shipping_fee;
+
+    await this.sendOrderEmail(
+      order,
+      { email: customer.email, id: customer.id } as LoggedUser,
+      deliveryInfo,
+      cartItems,
+      shipping_fee,
+      'paid',
+    );
+
+    console.log(`✅ Email xác nhận thanh toán đã gửi cho ${customer.email}`);
+  }
   private getBase64Image(filename: string): string {
     const filePath = `public/uploads/${filename}`;
     if (!fs.existsSync(filePath)) return '';
