@@ -49,9 +49,8 @@ export class AuthController {
       ?.access_token;
 
     if (!token) {
-      return null;
+      throw new UnauthorizedException('Không có token xác thực.'); // ✅
     }
-
     try {
       const jwtKey = this.configService.get<string>('JWT_KEY');
       if (!jwtKey) throw new Error('JWT_KEY is not set in environment');
@@ -179,7 +178,7 @@ export class AuthController {
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const accessExpiresIn =
-      this.configService.get('JWT_ACCESS_EXPIRES_IN') || '15m';
+      this.configService.get('JWT_ACCESS_EXPIRES_IN') || '1m';
     const accessCookieMaxAge = parseInt(
       this.configService.get('JWT_ACCESS_COOKIE_MAXAGE') || '900000',
     );

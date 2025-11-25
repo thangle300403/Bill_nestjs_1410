@@ -70,10 +70,10 @@ export class VnpayController {
       if (result.isSuccess && query.vnp_ResponseCode === '00') {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         const orderId = query.vnp_TxnRef; // mã đơn hàng bạn gửi khi buildPaymentUrl()
-        console.log(`✅ Thanh toán thành công cho đơn hàng #${orderId}`);
-
+        console.log(`🔔 Xác nhận thanh toán cho đơn hàng #${orderId}`);
         // Cập nhật trạng thái "paid"
         await this.orderService.markOrderAsPaid(orderId);
+        console.log(`✅ Thanh toán thành công cho đơn hàng #${orderId}`);
 
         return res.json({ RspCode: '00', Message: 'Confirm Success' });
       }

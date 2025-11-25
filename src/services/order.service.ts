@@ -497,6 +497,7 @@ export class OrderService {
   }
 
   async markOrderAsPaid(orderId: string) {
+    console.log(`🔔 Cập nhật trạng thái thanh toán cho đơn hàng #${orderId}`);
     await this.orderRepository.update(orderId, { order_status_id: 7 });
 
     const order = await this.orderRepository.findOne({

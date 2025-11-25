@@ -43,8 +43,6 @@ async function bootstrap() {
       'http://14.225.192.76:3000',
       'http://14.225.192.76:80',
       'http://14.225.192.76',
-      'https://billwinslow.top',
-      'https://www.billwinslow.top',
       'https://billbad.com',
       'https://www.billbad.com',
     ],
